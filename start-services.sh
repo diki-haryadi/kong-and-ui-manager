@@ -144,10 +144,32 @@ setup_kong_routing() {
     echo "Kong routing configuration completed"
 }
 
+# Fungsi untuk memperbarui plugin yang ada
+update_plugin() {
+    local plugin_name=$1
+    local plugin_id=$(curl -s "http://localhost:8001/plugins?name=$plugin_name" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+    
+    if [ ! -z "$plugin_id" ]; then
+        echo "Memperbarui plugin $plugin_name dengan ID: $plugin_id..."
+        # Gunakan PATCH untuk memperbarui konfigurasi plugin yang ada
+        curl -X PATCH http://localhost:8001/plugins/$plugin_id \
+            --data "$2"
+        echo "Plugin $plugin_name berhasil diperbarui"
+    else
+        echo "Plugin $plugin_name tidak ditemukan"
+        return 1
+    fi
+}
+
 # Fungsi untuk mengatur CORS pada Kong Admin API
 setup_cors() {
     echo "Mengatur CORS untuk Kong Admin API..."
-    curl -X POST http://localhost:8001/services/kong-admin/plugins \
+    # Cek apakah plugin CORS sudah ada
+    local cors_config="name=cors&config.origins[]=https://koung.ragam.io&config.methods[]=GET&config.methods[]=HEAD&config.methods[]=PUT&config.methods[]=PATCH&config.methods[]=POST&config.methods[]=DELETE&config.methods[]=OPTIONS&config.origins_regex[]=.*\.ragam\.io&config.headers[]=Accept&config.headers[]=Accept-Version&config.headers[]=Content-Length&config.headers[]=Content-MD5&config.headers[]=Content-Type&config.headers[]=Date&config.headers[]=Authorization&config.headers[]=Access-Control-Allow-Origin&config.headers[]=Access-Control-Allow-Methods&config.headers[]=Access-Control-Allow-Headers&config.headers[]=Access-Control-Allow-Credentials&config.exposed_headers[]=*&config.credentials=true&config.max_age=86400&config.preflight_continue=false"
+    
+    if ! update_plugin "cors" "$cors_config"; then
+        echo "Plugin CORS tidak ditemukan, membuat plugin baru..."
+        curl -X POST http://localhost:8001/services/kong-admin/plugins \
         --data "name=cors" \
         --data "config.origins[]=https://koung.ragam.io" \
         --data "config.methods[]=GET" \
@@ -157,6 +179,7 @@ setup_cors() {
         --data "config.methods[]=POST" \
         --data "config.methods[]=DELETE" \
         --data "config.methods[]=OPTIONS" \
+        --data "config.origins_regex[]=.*\.ragam\.io" \
         --data "config.headers[]=Accept" \
         --data "config.headers[]=Accept-Version" \
         --data "config.headers[]=Content-Length" \

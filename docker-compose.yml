@@ -12,8 +12,6 @@ services:
     volumes:
       - kong_data:/var/lib/postgresql/data
       - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
     networks:
       - kong_net
 
